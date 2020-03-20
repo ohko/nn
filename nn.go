@@ -36,9 +36,9 @@ type StData struct {
 func (o *NN) sigmoid(x []float64) []float64 {
 	for k, v := range x {
 		x[k] = 1 / (1 + math.Exp(-v))
-		// x[k] = 1 / (1 + math.Exp(-1*v))
 		// x[k] = (1 - math.Exp(-2*v)) / (1 + math.Exp(-2*v))
 		// x[k] = 1 - math.Pow(v, 2)
+		// x[k] = math.Sinh(v) / math.Cosh(v)
 	}
 	return x
 }
@@ -63,7 +63,7 @@ func (o *NN) matrixMul(input []float64, weight [][]float64) []float64 {
 	return z
 }
 
-func (o *NN) right(data StData) {
+func (o *NN) right(data *StData) {
 	output := data.input
 	for index := 0; index < len(o.Weight); index++ {
 		// 输入层加权求和
@@ -102,7 +102,7 @@ func (o *NN) matrixMul2(input []float64, weightIndex int, layer []float64) []flo
 	return z
 }
 
-func (o *NN) left(data StData) {
+func (o *NN) left(data *StData) {
 	rdiff := make([]float64, len(o.Output))
 	// 计算残差
 	for k := range data.output {
@@ -172,45 +172,49 @@ func (o *NN) Run() {
 
 	study := 0
 	diff := make([]float64, len(o.Data[0].output))
-	var max float64
-	for count := 1; count <= o.Count; count++ {
-		for _, v := range o.Data {
-			study++
-			o.train(v, &diff)
-		}
-
+	max := o.MinDiff + 1
+	for count := 1; max > o.MinDiff && count <= o.Count; count++ {
 		max = 0
-		for _, d := range diff {
-			if d > max {
-				max = d
-			}
-		}
+		for k1 := range o.Data {
+			study++
+			o.train(&o.Data[k1], &diff)
 
-		if count%10 == 0 || max < o.MinDiff {
-			fmt.Printf("\r训练：%v/%v | 误差：%0.8f", count, o.Count, max)
-		}
-		if max < o.MinDiff {
-			break
+			for _, d := range diff {
+				if d > max {
+					max = d
+				}
+			}
+
+			if study%1000 == 0 { //|| max < o.MinDiff {
+				fmt.Printf("\r训练：%v/%v(%0.1f%%) | 误差：%0.8f", study, o.Count*len(o.Data), float64(study)/float64(o.Count*len(o.Data))*100, max)
+			}
 		}
 	}
 	fmt.Println()
 	fmt.Println("学习次数:", study)
 
+	chk := 0
+	success := 0
 	for _, v := range o.Test {
-		o.right(v)
+		o.right(&v)
 		for kk := range v.output {
+			chk++
 			result := "SUCCESS"
 			diff := math.Pow(o.Output[kk]-v.output[kk], 2)
 			if diff > o.MinDiff {
 				result = "FAILED"
+			} else {
+				success++
 			}
 			percent := math.Abs(o.Output[kk]-v.output[kk]) / v.output[kk] * 100
-			fmt.Printf("检测:%v | 输入：%v | 期望：%v | 结果：%v | 误差百分比:%0.5v%% | maxDiff:%0.8f\n", result, v.input, v.output, o.Output, percent, diff)
+			// fmt.Printf("检测:%v | 输入：%v | 期望：%v | 结果：%v | 误差百分比:%0.5v%% | maxDiff:%0.8f\n", result, v.input, v.output, o.Output, percent, diff)
+			fmt.Printf("\r检测:%v | 期望：%v | 结果：%v | 误差百分比:%0.5v%% | maxDiff:%0.8f", result, v.output, o.Output, percent, diff)
 		}
 	}
+	fmt.Printf("\n检测:%v | 成功：%v | 成功率:%0.2f%%\n", chk, success, float64(success)/float64(chk)*100)
 }
 
-func (o *NN) train(v StData, diff *[]float64) {
+func (o *NN) train(v *StData, diff *[]float64) {
 	o.right(v)
 	for kk := range v.output {
 		(*diff)[kk] = math.Pow(o.Output[kk]-v.output[kk], 2)

@@ -1,7 +1,9 @@
 package nn
 
 import (
+	"log"
 	"math"
+	"nn/mnist"
 	"testing"
 )
 
@@ -10,7 +12,8 @@ func Test_p(t *testing.T) {
 	// p开发().Run()
 	// p教程样本().Run()
 	// p加法().Run()
-	p乘法().Run()
+	// p乘法().Run()
+	pMnist().Run()
 }
 
 func p开发() *NN {
@@ -87,6 +90,65 @@ func p加法() *NN {
 	for i := 0; i < 2000; i++ {
 		x, y := o.randFloat64()/2, o.randFloat64()/2
 		o.Data = append(o.Data, StData{input: []float64{x, y}, output: []float64{x + y}})
+	}
+
+	return o
+}
+
+func pMnist() *NN {
+	o := &NN{
+		Name: "MNIST", Learn: 0.6, MinDiff: 0.05, Count: 10, Seed: false,
+		Data:  []StData{},
+		Layer: []int{11, 10},
+	}
+
+	{
+		dataSet, err := mnist.ReadTrainSet("./mnist/MNIST_data")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("MNISST train: N:%v | W:%v | H:%v", dataSet.N, dataSet.W, dataSet.H)
+
+		for _, v := range dataSet.Data {
+			bits := make([]float64, dataSet.W*dataSet.H)
+			pos := 0
+			for _, vv := range v.Image {
+				for _, vvv := range vv {
+					if vvv > 0 {
+						bits[pos] = 0.9
+					} else {
+						bits[pos] = 0.1
+					}
+					pos++
+				}
+			}
+			o.Data = append(o.Data, StData{input: bits, output: []float64{float64(v.Digit+1) / 11}})
+		}
+	}
+	{
+		dataSet, err := mnist.ReadTestSet("./mnist/MNIST_data")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("MNISST test: N:%v | W:%v | H:%v", dataSet.N, dataSet.W, dataSet.H)
+
+		for _, v := range dataSet.Data {
+			bits := make([]float64, dataSet.W*dataSet.H)
+			pos := 0
+			for _, vv := range v.Image {
+				for _, vvv := range vv {
+					if vvv > 0 {
+						bits[pos] = 0.9
+					} else {
+						bits[pos] = 0.1
+					}
+					pos++
+				}
+			}
+			o.Test = append(o.Test, StData{input: bits, output: []float64{float64(v.Digit) / 10}})
+		}
 	}
 
 	return o
