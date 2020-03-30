@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// go test nn -run Test_p -v -count=1
+// go test nn -run Test_p -v -count=1 -timeout=1h
 func Test_p(t *testing.T) {
 	// p开发()
 	// p教程样本()
@@ -96,8 +96,14 @@ func p加法() {
 		Layer: []int{20, 20},
 
 		Test: []StData{
-			StData{input: []float64{0.3, 0.3}, output: []float64{0.6}},
 			StData{input: []float64{0.1, 0.1}, output: []float64{0.2}},
+			StData{input: []float64{0.1, 0.2}, output: []float64{0.3}},
+			StData{input: []float64{0.2, 0.2}, output: []float64{0.4}},
+			StData{input: []float64{0.3, 0.2}, output: []float64{0.5}},
+			StData{input: []float64{0.3, 0.3}, output: []float64{0.6}},
+			StData{input: []float64{0.3, 0.4}, output: []float64{0.7}},
+			StData{input: []float64{0.4, 0.4}, output: []float64{0.8}},
+			StData{input: []float64{0.5, 0.4}, output: []float64{0.9}},
 		},
 	}
 
@@ -112,7 +118,7 @@ func p加法() {
 
 func pMnist() {
 	o := &NN{
-		Name: "MNIST", Learn: 0.6, MinDiff: 0.01, Count: 3, Seed: false,
+		Name: "MNIST", Learn: 0.6, MinDiff: 0.1, Count: 100, Seed: false,
 		Data:  []StData{},
 		Layer: []int{20, 20},
 	}
@@ -130,15 +136,11 @@ func pMnist() {
 			pos := 0
 			for _, vv := range v.Image {
 				for _, vvv := range vv {
-					if vvv > 0 {
-						bits[pos] = 0.9
-					} else {
-						bits[pos] = 0.1
-					}
+					bits[pos] = float64(vvv)/0x100 + 0.0001
 					pos++
 				}
 			}
-			o.Data = append(o.Data, StData{input: bits, output: []float64{(float64(v.Digit) + 0.001) / 10}})
+			o.Data = append(o.Data, StData{input: bits, output: []float64{(float64(v.Digit) + 0.0001) / 10}})
 		}
 	}
 	{
@@ -154,11 +156,7 @@ func pMnist() {
 			pos := 0
 			for _, vv := range v.Image {
 				for _, vvv := range vv {
-					if vvv > 0 {
-						bits[pos] = 0.9
-					} else {
-						bits[pos] = 0.1
-					}
+					bits[pos] = float64(vvv)/0x100 + 0.0001
 					pos++
 				}
 			}

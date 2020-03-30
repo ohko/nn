@@ -221,7 +221,6 @@ func (o *NN) Check(checkFun func(chk, result float64) bool) {
 func (o NN) defaultCheckFun(chk, result float64) bool {
 	diff := math.Pow(chk-result, 2)
 	b := diff < o.MinDiff
-	fmt.Printf("\r检测:%v | 期望：%v | 结果：%v | maxDiff:%0.8f", b, chk, result, diff)
 	return b
 }
 
