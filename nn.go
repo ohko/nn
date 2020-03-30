@@ -166,8 +166,8 @@ func (o *NN) init() {
 	// o.ll.Log4Trace("weight:", fmt.Sprintf("%0.2v", o.Weight))
 }
 
-// Run ...
-func (o *NN) Run() {
+// Train ...
+func (o *NN) Train() {
 	o.init()
 
 	study := 0
@@ -185,7 +185,7 @@ func (o *NN) Run() {
 				}
 			}
 
-			if study%1000 == 0 { //|| max < o.MinDiff {
+			if study%1000 == 0 {
 				fmt.Printf("\r训练：%v/%v(%0.1f%%) | 误差：%0.8f", study, o.Count*len(o.Data), float64(study)/float64(o.Count*len(o.Data))*100, max)
 			}
 		}
@@ -193,25 +193,36 @@ func (o *NN) Run() {
 	fmt.Println()
 	fmt.Println("学习次数:", study)
 
+}
+
+// Check ...
+func (o *NN) Check(checkFun func(chk, result float64) bool) {
 	chk := 0
 	success := 0
+	b := false
 	for _, v := range o.Test {
 		o.right(&v)
 		for kk := range v.output {
 			chk++
-			result := "SUCCESS"
-			diff := math.Pow(o.Output[kk]-v.output[kk], 2)
-			if diff > o.MinDiff {
-				result = "FAILED"
+			if checkFun != nil {
+				b = checkFun(o.Output[kk], v.output[kk])
 			} else {
+				b = o.defaultCheckFun(o.Output[kk], v.output[kk])
+			}
+			if b {
 				success++
 			}
-			percent := math.Abs(o.Output[kk]-v.output[kk]) / v.output[kk] * 100
-			// fmt.Printf("检测:%v | 输入：%v | 期望：%v | 结果：%v | 误差百分比:%0.5v%% | maxDiff:%0.8f\n", result, v.input, v.output, o.Output, percent, diff)
-			fmt.Printf("\r检测:%v | 期望：%v | 结果：%v | 误差百分比:%0.5v%% | maxDiff:%0.8f", result, v.output, o.Output, percent, diff)
+			fmt.Printf("\r检测:%v | 期望：%v | 结果：%v   ", b, o.Output[kk], v.output[kk])
 		}
 	}
 	fmt.Printf("\n检测:%v | 成功：%v | 成功率:%0.2f%%\n", chk, success, float64(success)/float64(chk)*100)
+}
+
+func (o NN) defaultCheckFun(chk, result float64) bool {
+	diff := math.Pow(chk-result, 2)
+	b := diff < o.MinDiff
+	fmt.Printf("\r检测:%v | 期望：%v | 结果：%v | maxDiff:%0.8f", b, chk, result, diff)
+	return b
 }
 
 func (o *NN) train(v *StData, diff *[]float64) {

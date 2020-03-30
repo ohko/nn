@@ -7,17 +7,17 @@ import (
 	"testing"
 )
 
-// go Test nn -run Test_p -v -count=1
+// go test nn -run Test_p -v -count=1
 func Test_p(t *testing.T) {
-	// p开发().Run()
-	// p教程样本().Run()
-	// p加法().Run()
-	// p乘法().Run()
-	pMnist().Run()
+	// p开发()
+	// p教程样本()
+	// p乘法()
+	// p加法()
+	pMnist()
 }
 
-func p开发() *NN {
-	return &NN{
+func p开发() {
+	o := &NN{
 		Name: "开发", Learn: 0.6, MinDiff: 0.0001, Count: 1000,
 		Data: []StData{
 			StData{input: []float64{0.1, 0.2}, output: []float64{0.3, 0.4}},
@@ -33,10 +33,13 @@ func p开发() *NN {
 			[][]float64{[]float64{0.2, 0.4}, []float64{0.6, 0.8}, []float64{0.3, 0.5}},
 		},
 	}
+
+	o.Train()
+	o.Check(nil)
 }
 
-func p教程样本() *NN {
-	return &NN{
+func p教程样本() {
+	o := &NN{
 		Name: "教程样本", Learn: 0.6, MinDiff: 0.0001, Count: 1000,
 		Data: []StData{
 			StData{input: []float64{0.4, -0.7}, output: []float64{0.1}},
@@ -53,33 +56,44 @@ func p教程样本() *NN {
 			[][]float64{[]float64{0.2}, []float64{-0.5}},
 		},
 	}
+
+	o.Train()
+	o.Check(nil)
 }
 
-func p乘法() *NN {
+func p乘法() {
 	o := &NN{
-		Name: "乘法", Learn: 0.6, MinDiff: math.Pow(0.001, 2), Count: 1000,
+		Name: "乘法", Learn: 0.6, MinDiff: math.Pow(0.1, 2), Count: 100,
 		Data:  []StData{},
-		Layer: []int{40, 20},
+		Layer: []int{10, 10},
 
 		Test: []StData{
-			StData{input: []float64{0.9, 0.9}, output: []float64{0.81}},
 			StData{input: []float64{0.1, 0.1}, output: []float64{0.01}},
+			StData{input: []float64{0.2, 0.2}, output: []float64{0.04}},
+			StData{input: []float64{0.3, 0.3}, output: []float64{0.09}},
+			StData{input: []float64{0.4, 0.4}, output: []float64{0.16}},
+			StData{input: []float64{0.5, 0.5}, output: []float64{0.25}},
+			StData{input: []float64{0.6, 0.6}, output: []float64{0.36}},
+			StData{input: []float64{0.7, 0.7}, output: []float64{0.49}},
+			StData{input: []float64{0.8, 0.8}, output: []float64{0.64}},
+			StData{input: []float64{0.9, 0.9}, output: []float64{0.81}},
 		},
 	}
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100000; i++ {
 		x, y := o.randFloat64(), o.randFloat64()
 		o.Data = append(o.Data, StData{input: []float64{x, y}, output: []float64{x * y}})
 	}
 
-	return o
+	o.Train()
+	o.Check(nil)
 }
 
-func p加法() *NN {
+func p加法() {
 	o := &NN{
-		Name: "加法", Learn: 0.6, MinDiff: math.Pow(0.001, 2), Count: 1000,
+		Name: "加法", Learn: 0.6, MinDiff: math.Pow(0.01, 2), Count: 1000,
 		Data:  []StData{},
-		Layer: []int{40, 20},
+		Layer: []int{20, 20},
 
 		Test: []StData{
 			StData{input: []float64{0.3, 0.3}, output: []float64{0.6}},
@@ -92,14 +106,15 @@ func p加法() *NN {
 		o.Data = append(o.Data, StData{input: []float64{x, y}, output: []float64{x + y}})
 	}
 
-	return o
+	o.Train()
+	o.Check(nil)
 }
 
-func pMnist() *NN {
+func pMnist() {
 	o := &NN{
-		Name: "MNIST", Learn: 0.6, MinDiff: 0.05, Count: 10, Seed: false,
+		Name: "MNIST", Learn: 0.6, MinDiff: 0.01, Count: 3, Seed: false,
 		Data:  []StData{},
-		Layer: []int{11, 10},
+		Layer: []int{20, 20},
 	}
 
 	{
@@ -123,7 +138,7 @@ func pMnist() *NN {
 					pos++
 				}
 			}
-			o.Data = append(o.Data, StData{input: bits, output: []float64{float64(v.Digit+1) / 11}})
+			o.Data = append(o.Data, StData{input: bits, output: []float64{(float64(v.Digit) + 0.001) / 10}})
 		}
 	}
 	{
@@ -147,9 +162,12 @@ func pMnist() *NN {
 					pos++
 				}
 			}
-			o.Test = append(o.Test, StData{input: bits, output: []float64{float64(v.Digit) / 10}})
+			o.Test = append(o.Test, StData{input: bits, output: []float64{float64(v.Digit)}})
 		}
 	}
 
-	return o
+	o.Train()
+	o.Check(func(chk, result float64) bool {
+		return math.Round(chk*10) == result
+	})
 }
