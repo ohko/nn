@@ -26,13 +26,14 @@ type NN struct {
 	Data               []StData // 输入/输出层
 	InputNum           int
 	OutputNum          int
-	Layer              []int                             // 隐藏层数量
-	Hidden             [][]float64                       // 隐藏层
-	Weight             [][][]float64                     // 权重
-	Output             []float64                         // 输出层
-	Test               []StData                          // 测试
-	TestCallback       func(chk, result float64) float64 // 检测回调函数
-	StudyCountCallback func(study int)                   // 学习次数回调
+	Layer              []int                               // 隐藏层数量
+	Hidden             [][]float64                         // 隐藏层
+	Weight             [][][]float64                       // 权重
+	Output             []float64                           // 输出层
+	Test               []StData                            // 测试
+	TestCallback       func(chk, result []float64) float64 // 检测回调函数
+	CheckCallback      func(showLog bool, showPercent bool) float64
+	StudyCountCallback func(study int) // 学习次数回调
 }
 
 // StData ...
@@ -268,18 +269,15 @@ func (o *NN) Train() error {
 
 	all := o.Count * len(o.Data)
 	study := 0
-	diff := make([]float64, len(o.Data[0].output))
+	diff := 0.0
 	max := o.MinDiff + 1
 	for count := 1; max > o.MinDiff && count <= o.Count; count++ {
 		max = 0
 		for k1 := range o.Data {
 			study++
-			o.train(&o.Data[k1], &diff)
-
-			for _, d := range diff {
-				if d > max {
-					max = d
-				}
+			diff = o.train(&o.Data[k1])
+			if diff > max {
+				max = diff
 			}
 
 			if o.StudyCountCallback != nil {
@@ -293,7 +291,6 @@ func (o *NN) Train() error {
 				fmt.Println()
 			}
 		}
-
 	}
 	fmt.Println()
 	fmt.Println("学习次数:", study)
@@ -301,21 +298,25 @@ func (o *NN) Train() error {
 	return nil
 }
 
-func (o *NN) train(v *StData, diff *[]float64) {
+func (o *NN) train(v *StData) float64 {
 	runtime.Gosched()
 	o.Right(v.input)
 	o.Left(v.input, v.output)
-	for kk := range v.output {
-		if o.TestCallback != nil {
-			(*diff)[kk] = o.TestCallback(o.Output[kk], v.output[kk])
-		} else {
-			(*diff)[kk] = o.defaultCheckFun(o.Output[kk], v.output[kk])
-		}
+
+	if o.TestCallback != nil {
+		return o.TestCallback(o.Output, v.output)
 	}
+	return o.defaultCheckFun(o.Output, v.output)
 }
 
 // Check ...
 func (o *NN) Check(showLog bool, showPercent bool) float64 {
+	if o.CheckCallback != nil {
+		return o.CheckCallback(showLog, showPercent)
+	}
+	return o.defaultCheck(showLog, showPercent)
+}
+func (o *NN) defaultCheck(showLog bool, showPercent bool) float64 {
 	chk := 0
 	success := 0
 	b := 0.0
@@ -323,16 +324,16 @@ func (o *NN) Check(showLog bool, showPercent bool) float64 {
 		chk++
 		o.Right(v.input)
 		if o.TestCallback != nil {
-			b = o.TestCallback(v.output[0], o.Output[0])
+			b = o.TestCallback(o.Output, v.output)
 		} else {
-			b = o.defaultCheckFun(v.output[0], o.Output[0])
+			b = o.defaultCheckFun(o.Output, v.output)
 		}
 
 		if b < o.MinDiff {
 			success++
 		}
 		if showLog {
-			fmt.Printf("\r检测:%v | 期望：%0.8f | 结果：%0.8f | 误差：%0.8f   ", b < o.MinDiff, v.output[0], o.Output[0], b)
+			fmt.Printf("\r检测:%v | 期望：%0.8f | 结果：%0.8f | 误差：%0.8f   ", b < o.MinDiff, v.output, o.Output, b)
 		}
 	}
 	percent := float64(success) / float64(chk)
@@ -342,8 +343,12 @@ func (o *NN) Check(showLog bool, showPercent bool) float64 {
 	return percent
 }
 
-func (o NN) defaultCheckFun(chk, result float64) float64 {
-	return math.Pow(chk-result, 2)
+func (o NN) defaultCheckFun(chk, result []float64) float64 {
+	sum := 0.0
+	for k := range chk {
+		sum += math.Pow(chk[k]-result[k], 2)
+	}
+	return math.Sqrt(sum / float64(len(chk)))
 }
 
 // mrand "math/rand"
@@ -390,6 +395,15 @@ func (o *NN) SaveWeight(fileName string) error {
 	return ioutil.WriteFile(fileName, bs, 0644)
 }
 
+// LoadWeight ...
+func (o *NN) LoadWeight(fileName string) error {
+	bs, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return err
+	}
+	return o.FromJSON(string(bs))
+}
+
 // ToJSON ...
 func (o *NN) ToJSON() string {
 	bs, _ := json.Marshal(o.Weight)
@@ -398,5 +412,8 @@ func (o *NN) ToJSON() string {
 
 // FromJSON ...
 func (o *NN) FromJSON(str string) error {
+	if err := o.Init(); err != nil {
+		return err
+	}
 	return json.Unmarshal([]byte(str), &o.Weight)
 }
