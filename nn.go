@@ -18,12 +18,14 @@ import (
 // NN Neural Network
 type NN struct {
 	ll                 *logger.Logger
-	Seed               bool                              // 随机前是否先seed
-	Name               string                            // 名称
-	Learn              float64                           // 学习率
-	MinDiff            float64                           // 最小误差
-	Count              int                               // 训练次数
-	Data               []StData                          // 输入/输出层
+	Seed               bool     // 随机前是否先seed
+	Name               string   // 名称
+	Learn              float64  // 学习率
+	MinDiff            float64  // 最小误差
+	Count              int      // 训练次数
+	Data               []StData // 输入/输出层
+	InputNum           int
+	OutputNum          int
 	Layer              []int                             // 隐藏层数量
 	Hidden             [][]float64                       // 隐藏层
 	Weight             [][][]float64                     // 权重
@@ -69,8 +71,8 @@ func (o *NN) matrixMul(input []float64, weight [][]float64) []float64 {
 	return z
 }
 
-func (o *NN) right(data *StData) {
-	output := data.input
+// Right ...
+func (o *NN) Right(output []float64) []float64 {
 	for index := 0; index < len(o.Weight); index++ {
 		// 输入层加权求和
 		output = o.matrixMul(output, o.Weight[index])
@@ -82,6 +84,7 @@ func (o *NN) right(data *StData) {
 		}
 	}
 
+	return o.Output
 	// o.ll.Log0Debug("last output:", o.Output)
 }
 
@@ -108,29 +111,32 @@ func (o *NN) matrixMul2(input []float64, weightIndex int, layer []float64) []flo
 	return z
 }
 
-func (o *NN) left(data *StData) {
+// Left ...
+// func (o *NN) Left(data *StData) {
+func (o *NN) Left(input, output []float64) {
 	rdiff := make([]float64, len(o.Output))
 	// 计算残差
-	for k := range data.output {
-		rdiff[k] = -(o.Output[k] - data.output[k]) * o.Output[k] * (1 - o.Output[k])
+	for k := range output {
+		rdiff[k] = -(o.Output[k] - output[k]) * o.Output[k] * (1 - o.Output[k])
 	}
 	// o.ll.Log0Debug("残差:", rdiff)
 
 	// 修正每层残差
-	output := rdiff
+	output1 := rdiff
 	for index := len(o.Weight) - 1; index >= 0; index-- {
 		// 输入层加权求和
 		if index == 0 {
-			output = o.matrixMul2(output, index, data.input)
+			output1 = o.matrixMul2(output1, index, input)
 		} else {
-			output = o.matrixMul2(output, index, o.Hidden[index-1])
+			output1 = o.matrixMul2(output1, index, o.Hidden[index-1])
 		}
 	}
 
 	// o.ll.Log0Debug("weight:", o.Weight)
 }
 
-func (o *NN) init() error {
+// Init ...
+func (o *NN) Init() error {
 	o.ll = logger.NewLogger(nil)
 	o.ll.SetFlags(log.Lshortfile)
 
@@ -141,7 +147,7 @@ func (o *NN) init() error {
 		o.Count = 1000
 	}
 
-	fmt.Printf("name:%v | diff:%f | data: %v | count:%v | layer:%v\n", o.Name, o.MinDiff, len(o.Data), o.Count, o.Layer)
+	// fmt.Printf("name:%v | diff:%f | data: %v | count:%v | layer:%v\n", o.Name, o.MinDiff, len(o.Data), o.Count, o.Layer)
 
 	// generate hidden layer
 	for _, v := range o.Layer {
@@ -151,24 +157,13 @@ func (o *NN) init() error {
 
 	// generate weight
 	if o.Weight == nil {
-		tmp := []int{len(o.Data[0].input)}
-		tmp = append(tmp, o.Layer...)
-		tmp = append(tmp, len(o.Data[0].output))
-		for i := 0; i < len(tmp)-1; i++ {
-			t1 := make([][]float64, tmp[i])
-			for j := 0; j < tmp[i]; j++ {
-				t1[j] = make([]float64, tmp[i+1])
-				for m := 0; m < len(t1[j]); m++ {
-					if o.randFloat64(0.1, 0.9) < 0.5 {
-						t1[j][m] = o.randFloat64(0.1, 0.9)
-					} else {
-						t1[j][m] = -o.randFloat64(0.1, 0.9)
-					}
-				}
-			}
-			o.Weight = append(o.Weight, t1)
-		}
+		o.ResetWeight()
 	}
+
+	// log.Println(o.Weight)
+	// log.Println(o.Bias)
+	// os.Exit(0)
+
 	// o.ll.Log4Trace("weight:", fmt.Sprintf("%0.2v", o.Weight))
 
 	// 数据归一
@@ -179,6 +174,29 @@ func (o *NN) init() error {
 	// 	return err
 	// }
 	return nil
+}
+
+// ResetWeight ...
+func (o *NN) ResetWeight() {
+	o.Weight = make([][][]float64, 0)
+	// generate weight
+	tmp := []int{o.InputNum}
+	tmp = append(tmp, o.Layer...)
+	tmp = append(tmp, o.OutputNum)
+	for i := 0; i < len(tmp)-1; i++ {
+		t1 := make([][]float64, tmp[i])
+		for j := 0; j < tmp[i]; j++ {
+			t1[j] = make([]float64, tmp[i+1])
+			for m := 0; m < len(t1[j]); m++ {
+				if o.randFloat64(0.1, 0.9) < 0.5 {
+					t1[j][m] = o.randFloat64(0.1, 0.9)
+				} else {
+					t1[j][m] = -o.randFloat64(0.1, 0.9)
+				}
+			}
+		}
+		o.Weight = append(o.Weight, t1)
+	}
 }
 
 // 数据归一
@@ -244,7 +262,7 @@ func (o *NN) normalizing(data *[]StData) error {
 
 // Train ...
 func (o *NN) Train() error {
-	if err := o.init(); err != nil {
+	if err := o.Init(); err != nil {
 		return err
 	}
 
@@ -285,8 +303,8 @@ func (o *NN) Train() error {
 
 func (o *NN) train(v *StData, diff *[]float64) {
 	runtime.Gosched()
-	o.right(v)
-	o.left(v)
+	o.Right(v.input)
+	o.Left(v.input, v.output)
 	for kk := range v.output {
 		if o.TestCallback != nil {
 			(*diff)[kk] = o.TestCallback(o.Output[kk], v.output[kk])
@@ -303,7 +321,7 @@ func (o *NN) Check(showLog bool, showPercent bool) float64 {
 	b := 0.0
 	for _, v := range o.Test {
 		chk++
-		o.right(&v)
+		o.Right(v.input)
 		if o.TestCallback != nil {
 			b = o.TestCallback(v.output[0], o.Output[0])
 		} else {
@@ -372,11 +390,13 @@ func (o *NN) SaveWeight(fileName string) error {
 	return ioutil.WriteFile(fileName, bs, 0644)
 }
 
-// LoadWeight ...
-func (o *NN) LoadWeight(fileName string) error {
-	bs, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(bs, &o.Weight)
+// ToJSON ...
+func (o *NN) ToJSON() string {
+	bs, _ := json.Marshal(o.Weight)
+	return string(bs)
+}
+
+// FromJSON ...
+func (o *NN) FromJSON(str string) error {
+	return json.Unmarshal([]byte(str), &o.Weight)
 }

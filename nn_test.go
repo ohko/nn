@@ -14,6 +14,7 @@ func Test_开发(t *testing.T) {
 		Data: []StData{
 			StData{input: []float64{0.1, 0.2}, output: []float64{0.3, 0.4}},
 		},
+		InputNum: 2, OutputNum: 1,
 		Layer: []int{3, 3},
 		Test: []StData{
 			StData{input: []float64{0.3, 0.3}, output: []float64{0.6}},
@@ -42,6 +43,7 @@ func Test_教程样本(t *testing.T) {
 			StData{input: []float64{0.6, 0.1}, output: []float64{0.3}},
 			StData{input: []float64{0.2, 0.4}, output: []float64{0.25}},
 		},
+		InputNum: 2, OutputNum: 1,
 		Layer: []int{2},
 		Test: []StData{
 			StData{input: []float64{0.1, -0.2}, output: []float64{0.12}},
@@ -62,6 +64,7 @@ func Test_教程样本(t *testing.T) {
 func Test_01(t *testing.T) {
 	o := &NN{
 		Name: "1", Learn: 0.6, MinDiff: math.Pow(0.01, 2), Count: 1000000,
+		InputNum: 2, OutputNum: 1,
 		Data: []StData{
 			StData{input: []float64{0, 0}, output: []float64{0}},
 			StData{input: []float64{0, 1}, output: []float64{1}},
@@ -87,6 +90,7 @@ func Test_01(t *testing.T) {
 func Test_加法(t *testing.T) {
 	o := &NN{
 		Name: "加法", Learn: 0.6, MinDiff: math.Pow(0.001, 2), Count: 100000,
+		InputNum: 2, OutputNum: 1,
 		Layer: []int{5, 5, 5, 5},
 	}
 
@@ -108,6 +112,7 @@ func Test_加法(t *testing.T) {
 func Test_Mnist(t *testing.T) {
 	o := &NN{
 		Name: "MNIST", Learn: 0.6, MinDiff: math.Pow(0.1, 2), Count: 100,
+		InputNum: 28 * 28, OutputNum: 1,
 		Data:  []StData{},
 		Layer: []int{5, 5, 5, 5},
 	}
