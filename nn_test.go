@@ -15,7 +15,7 @@ func Test_开发(t *testing.T) {
 		Data: []StData{
 			{input: []float64{0.1, 0.2}, output: []float64{0.3, 0.4}},
 		},
-		InputNum: 2, OutputNum: 1,
+		InputNum: 2, OutputNum: 2,
 		Layer: []int{3, 3},
 		Test: []StData{
 			{input: []float64{0.3, 0.3}, output: []float64{0.6, 0.7}},
@@ -117,7 +117,7 @@ func Test_Mnist(t *testing.T) {
 		Name: "MNIST", Learn: 0.6, MinDiff: math.Pow(0.01, 2), Count: 3,
 		InputNum: 28 * 28, OutputNum: 10,
 		Data:  []StData{},
-		Layer: []int{5, 5},
+		Layer: []int{10},
 	}
 
 	{ // 训练数据
